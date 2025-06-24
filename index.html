@@ -1,105 +1,327 @@
-function responderChat() {
-  const input = document.getElementById('chat-question');
-  const msg = input.value;
-  if (!msg.trim()) return;
-  const body = document.getElementById('chatbot-body');
-  body.innerHTML += `<p><strong>Tú:</strong> ${msg}</p>`;
-
-  let respuesta = 'Hmm... No estoy seguro, pero puedo ayudarte a graficar funciones.';
-  if (msg.toLowerCase().includes('dominio')) respuesta = 'El dominio es el conjunto de valores de x permitidos.';
-  if (msg.toLowerCase().includes('rango')) respuesta = 'El rango es el conjunto de valores posibles de f(x).';
-  if (msg.toLowerCase().includes('cómo resolver')) respuesta = 'Puedes escribir la función y hacer clic en "Calcular".';
-
-  body.innerHTML += `<p><strong>MajoBot:</strong> ${respuesta}</p>`;
-  body.scrollTop = body.scrollHeight;
-  input.value = '';
-}
-
-function calcular() {
-  const input = document.getElementById('funcion').value.replace(/\s/g, '');
-  const match = input.match(/(.+)(<=|>=|<|>)(.+)/);
-  let exprText, operator = null, compareText = null;
-
-  if (match) {
-    exprText = match[1];
-    operator = match[2];
-    compareText = match[3];
-  } else {
-    exprText = input;
-  }
-
-  const expr = math.parse(exprText);
-  const f = expr.compile();
-  const g = compareText ? math.parse(compareText).compile() : null;
-
-  let x_vals = [], y_vals = [], valid_x = [], valid_y = [];
-  let minY = Infinity, maxY = -Infinity, domain = [];
-
-  for (let x = -50; x <= 50; x += 0.1) {
-    try {
-      let scope = { x };
-      let y = f.evaluate(scope);
-      let gy = g ? g.evaluate(scope) : 0;
-
-      if (typeof y === 'number' && isFinite(y)) {
-        x_vals.push(x);
-        y_vals.push(y);
-        domain.push(x);
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-
-        if (operator) {
-          let valid = false;
-          if (operator === '>') valid = y > gy;
-          if (operator === '>=') valid = y >= gy;
-          if (operator === '<') valid = y < gy;
-          if (operator === '<=') valid = y <= gy;
-          valid_x.push(x);
-          valid_y.push(valid ? y : null);
-        }
-      }
-    } catch {}
-  }
-
-  const traces = [
-    {
-      x: x_vals,
-      y: y_vals,
-      mode: 'lines',
-      name: 'f(x)',
-      line: { color: '#0d6efd', width: 2 }
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>MathMajo - Calculadora de Funciones</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #f4f6fa;
     }
-  ];
+    header {
+      background-color: #dc3545;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: white;
+    }
+    header img {
+      height: 40px;
+      margin-right: 15px;
+    }
+    header .left {
+      display: flex;
+      align-items: center;
+    }
+    header select, header button {
+      margin-left: 10px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    header button {
+      background: white;
+      color: #dc3545;
+    }
 
-  if (operator) {
-    traces.push({
-      x: valid_x,
-      y: valid_y,
-      fill: 'tozeroy',
-      mode: 'lines',
-      name: 'Zona válida',
-      line: { color: 'rgba(13,110,253,0.2)' },
-      fillcolor: 'rgba(13,110,253,0.3)'
-    });
-  }
+    .container {
+      max-width: 960px;
+      margin: 40px auto;
+      padding: 20px;
+    }
 
-  Plotly.newPlot('plot', traces, {
-    title: 'Gráfica',
-    xaxis: { title: 'x' },
-    yaxis: { title: 'f(x)' },
-    margin: { t: 30 }
-  });
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+      margin-bottom: 30px;
+    }
 
-  let salida = `
-    <p>📌 <strong>Dominio:</strong> <span class="math">[${Math.min(...domain).toFixed(2)}, ${Math.max(...domain).toFixed(2)}]</span></p>
-    <p>📈 <strong>Rango:</strong> <span class="math">[${minY.toFixed(2)}, ${maxY.toFixed(2)}]</span></p>
-  `;
+    input, button {
+      padding: 14px;
+      width: 100%;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      box-sizing: border-box;
+    }
 
-  if (operator) {
-    salida += `<p>✅ <strong>Solución gráfica:</strong> <span class="math">${exprText} ${operator} ${compareText}</span></p>`;
-  }
+    .calculate-btn {
+      background-color: #dc3545;
+      color: white;
+      font-weight: bold;
+      margin-top: 20px;
+      transition: background 0.3s;
+    }
+    .calculate-btn:hover {
+      background-color: #bb2d3b;
+    }
 
-  const output = document.getElementById('output');
-  output.style.display = 'block';
-  output.innerHTML = salida;
-}
+    #output {
+      background: #f8f9fc;
+      padding: 20px;
+      border-left: 4px solid #dc3545;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+
+    #plot {
+      height: 450px;
+      margin-top: 30px;
+    }
+
+    .math {
+      font-family: 'Courier New', monospace;
+      background: #e9ecef;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    footer {
+      text-align: center;
+      color: #6b7280;
+      padding: 30px 10px;
+      font-size: 14px;
+    }
+
+    /* Chatbot */
+    #chatbot {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 300px;
+      background: white;
+      border: 2px solid #dc3545;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      display: none;
+      flex-direction: column;
+    }
+    #chatbot-header {
+      background: #dc3545;
+      color: white;
+      padding: 10px;
+      font-weight: bold;
+      border-radius: 12px 12px 0 0;
+    }
+    #chatbot-body {
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    #chatbot-input {
+      border-top: 1px solid #eee;
+      display: flex;
+    }
+    #chatbot-input input {
+      flex: 1;
+      border: none;
+      padding: 10px;
+      border-radius: 0 0 0 12px;
+    }
+    #chatbot-input button {
+      background: #dc3545;
+      border: none;
+      color: white;
+      padding: 10px;
+      border-radius: 0 0 12px 0;
+      cursor: pointer;
+    }
+    #chat-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="left">
+      <img src="https://cdn-icons-png.flaticon.com/512/4228/4228693.png" alt="Logo">
+      <h1>MathMajo</h1>
+    </div>
+    <div class="right">
+      <select>
+        <option value="es">ES</option>
+        <option value="en">EN</option>
+      </select>
+      <button>Iniciar sesión</button>
+      <button>Registrarse</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <label for="funcion"><strong>Ingresa tu función o inecuación:</strong></label>
+      <input type="text" id="funcion" placeholder="Ejemplo: x^2">
+      <button class="calculate-btn" onclick="calcular()">Calcular</button>
+    </div>
+
+    <div id="output" class="card" style="display:none;"></div>
+    <div id="plot" class="card"></div>
+  </div>
+
+  <footer>
+    © 2025 MathMajo | Calculadora matemática
+  </footer>
+
+  <!-- Botón flotante del chatbot -->
+  <button id="chat-toggle" onclick="toggleChat()">💬</button>
+
+  <!-- Ventana de chatbot -->
+  <div id="chatbot">
+    <div id="chatbot-header">👨‍🏫 Profesor MajoBot</div>
+    <div id="chatbot-body">
+      <p><strong>MajoBot:</strong> ¡Hola! ¿En qué te puedo ayudar con tu función?</p>
+    </div>
+    <div id="chatbot-input">
+      <input type="text" id="chat-question" placeholder="Escribe tu pregunta...">
+      <button onclick="responderChat()">→</button>
+    </div>
+  </div>
+
+  <script>
+    function toggleChat() {
+      const chatbot = document.getElementById('chatbot');
+      chatbot.style.display = chatbot.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function responderChat() {
+      const input = document.getElementById('chat-question');
+      const msg = input.value;
+      if (!msg.trim()) return;
+      const body = document.getElementById('chatbot-body');
+      body.innerHTML += `<p><strong>Tú:</strong> ${msg}</p>`;
+
+      let respuesta = 'Hmm... No estoy seguro, pero puedo ayudarte a graficar funciones.';
+
+      if (msg.toLowerCase().includes('dominio')) respuesta = 'El dominio es el conjunto de valores de x permitidos.';
+      if (msg.toLowerCase().includes('rango')) respuesta = 'El rango es el conjunto de valores posibles de f(x).';
+      if (msg.toLowerCase().includes('cómo resolver')) respuesta = 'Puedes escribir la función y hacer clic en "Calcular".';
+
+      body.innerHTML += `<p><strong>MajoBot:</strong> ${respuesta}</p>`;
+      body.scrollTop = body.scrollHeight;
+      input.value = '';
+    }
+
+    function calcular() {
+      const input = document.getElementById('funcion').value.replace(/\s/g, '');
+      const match = input.match(/(.+)(<=|>=|<|>)(.+)/);
+      let exprText, operator = null, compareText = null;
+
+      if (match) {
+        exprText = match[1];
+        operator = match[2];
+        compareText = match[3];
+      } else {
+        exprText = input;
+      }
+
+      const expr = math.parse(exprText);
+      const f = expr.compile();
+      const g = compareText ? math.parse(compareText).compile() : null;
+
+      let x_vals = [], y_vals = [], valid_x = [], valid_y = [];
+      let minY = Infinity, maxY = -Infinity, domain = [];
+
+      for (let x = -50; x <= 50; x += 0.1) {
+        try {
+          let scope = { x };
+          let y = f.evaluate(scope);
+          let gy = g ? g.evaluate(scope) : 0;
+
+          if (typeof y === 'number' && isFinite(y)) {
+            x_vals.push(x);
+            y_vals.push(y);
+            domain.push(x);
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+
+            if (operator) {
+              let valid = false;
+              if (operator === '>') valid = y > gy;
+              if (operator === '>=') valid = y >= gy;
+              if (operator === '<') valid = y < gy;
+              if (operator === '<=') valid = y <= gy;
+
+              valid_x.push(x);
+              valid_y.push(valid ? y : null);
+            }
+          }
+        } catch {}
+      }
+
+      const traces = [
+        {
+          x: x_vals,
+          y: y_vals,
+          mode: 'lines',
+          name: 'f(x)',
+          line: { color: '#0d6efd', width: 2 }
+        }
+      ];
+
+      if (operator) {
+        traces.push({
+          x: valid_x,
+          y: valid_y,
+          fill: 'tozeroy',
+          mode: 'lines',
+          name: 'Zona válida',
+          line: { color: 'rgba(13,110,253,0.2)' },
+          fillcolor: 'rgba(13,110,253,0.3)'
+        });
+      }
+
+      Plotly.newPlot('plot', traces, {
+        title: 'Gráfica',
+        xaxis: { title: 'x' },
+        yaxis: { title: 'f(x)' },
+        margin: { t: 30 }
+      });
+
+      let salida = `
+        <p>📌 <strong>Dominio:</strong> <span class="math">[${Math.min(...domain).toFixed(2)}, ${Math.max(...domain).toFixed(2)}]</span></p>
+        <p>📈 <strong>Rango:</strong> <span class="math">[${minY.toFixed(2)}, ${maxY.toFixed(2)}]</span></p>
+      `;
+
+      if (operator) {
+        salida += `<p>✅ <strong>Solución gráfica:</strong> <span class="math">${exprText} ${operator} ${compareText}</span></p>`;
+      }
+
+      const output = document.getElementById('output');
+      output.style.display = 'block';
+      output.innerHTML = salida;
+    }
+  </script>
+</body>
+</html>
