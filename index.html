@@ -8,77 +8,108 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
+      margin: 0;
       font-family: 'Inter', sans-serif;
       background-color: #f4f6fa;
-      color: #1f2937;
+    }
+
+    header {
+      background-color: #dc3545;
       padding: 40px 20px;
-      max-width: 900px;
-      margin: auto;
+      text-align: center;
+      color: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-    h1 {
+
+    header h1 {
       font-size: 32px;
-      color: #1e3a8a;
-      margin-bottom: 20px;
+      margin: 0;
+      font-weight: 600;
     }
-    .input-box {
-      background: #fff;
+
+    .container {
+      max-width: 960px;
+      margin: 40px auto;
       padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
       margin-bottom: 30px;
     }
+
     input, button {
+      padding: 14px;
       width: 100%;
-      padding: 12px;
       font-size: 16px;
-      border-radius: 8px;
+      border-radius: 12px;
       border: 1px solid #cbd5e1;
-      margin-top: 10px;
       box-sizing: border-box;
     }
+
     button {
-      background-color: #2563eb;
+      background-color: #dc3545;
       color: white;
-      font-weight: 600;
-      cursor: pointer;
+      font-weight: bold;
+      margin-top: 20px;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #bb2d3b;
+    }
+
+    #output {
+      background: #f8f9fc;
+      padding: 20px;
+      border-left: 4px solid #dc3545;
+      border-radius: 10px;
       margin-top: 20px;
     }
-    button:hover {
-      background-color: #1e40af;
+
+    #plot {
+      height: 450px;
+      margin-top: 30px;
     }
-    #output {
-      background: #eef2ff;
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 30px;
-      border-left: 5px solid #6366f1;
-    }
-    #output p {
-      margin: 8px 0;
-    }
+
     .math {
       font-family: 'Courier New', monospace;
-      background: #e0e7ff;
+      background: #e9ecef;
       padding: 4px 8px;
       border-radius: 6px;
     }
-    #plot {
-      height: 450px;
+
+    footer {
+      text-align: center;
+      color: #6b7280;
+      padding: 30px 10px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
 
-  <h1>Calculadora de Dominio, Rango e Inecuaciones</h1>
+  <header>
+    <h1>Calculadora de Dominio, Rango e Inecuaciones</h1>
+  </header>
 
-  <div class="input-box">
-    <label for="funcion"><strong>Ingresa una función o inecuación:</strong></label>
-    <input type="text" id="funcion" placeholder="Ejemplo: x^2 - 4 ≥ 0 o sqrt(x)">
-    <button onclick="calcular()">Calcular</button>
+  <div class="container">
+    <div class="card">
+      <label for="funcion"><strong>Ingresa tu función o inecuación:</strong></label>
+      <input type="text" id="funcion" placeholder="Ejemplo: x^2 - 4 ≥ 0 o sqrt(x)">
+      <button onclick="calcular()">Calcular</button>
+    </div>
+
+    <div id="output" class="card" style="display:none;"></div>
+    <div id="plot" class="card"></div>
   </div>
 
-  <div id="output"></div>
-  <div id="plot"></div>
+  <footer>
+    © 2025 Majo | Calculadora matemática inspirada en Symbolab
+  </footer>
 
   <script>
     function calcular() {
@@ -134,7 +165,7 @@
           y: y_vals,
           mode: 'lines',
           name: 'f(x)',
-          line: { color: '#1e40af', width: 2 }
+          line: { color: '#0d6efd', width: 2 }
         }
       ];
 
@@ -144,14 +175,14 @@
           y: valid_y,
           fill: 'tozeroy',
           mode: 'lines',
-          name: 'Solución',
-          line: { color: 'rgba(96,165,250,0.2)' },
-          fillcolor: 'rgba(96,165,250,0.4)'
+          name: 'Zona válida',
+          line: { color: 'rgba(13,110,253,0.2)' },
+          fillcolor: 'rgba(13,110,253,0.3)'
         });
       }
 
       Plotly.newPlot('plot', traces, {
-        title: 'Gráfica de la función',
+        title: 'Gráfica',
         xaxis: { title: 'x' },
         yaxis: { title: 'f(x)' },
         margin: { t: 30 }
@@ -163,18 +194,19 @@
       `;
 
       if (operator) {
-        salida += `<p>✅ <strong>Solución gráfica de:</strong> <span class="math">${exprText} ${operator} ${compareText}</span></p>`;
+        salida += `<p>✅ <strong>Solución gráfica:</strong> <span class="math">${exprText} ${operator} ${compareText}</span></p>`;
         const symbolic = resolverInecuacionCuadratica(exprText, operator);
         if (symbolic) {
           salida += `<p>🧠 <strong>Solución simbólica:</strong> <span class="math">${symbolic}</span></p>`;
         }
       }
 
-      document.getElementById('output').innerHTML = salida;
+      const output = document.getElementById('output');
+      output.style.display = 'block';
+      output.innerHTML = salida;
     }
 
     function resolverInecuacionCuadratica(exprText, operador) {
-      // Intenta obtener coeficientes de una cuadrática ax^2 + bx + c
       try {
         const node = math.simplify(exprText);
         const poly = node.toString().replace(/\s/g, '');
@@ -188,7 +220,6 @@
         let c = parseFloat(match[3]) || 0;
 
         const disc = b * b - 4 * a * c;
-
         if (disc < 0) return 'No hay solución real';
 
         const x1 = ((-b - Math.sqrt(disc)) / (2 * a)).toFixed(2);
