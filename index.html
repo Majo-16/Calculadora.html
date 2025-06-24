@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Calculadora de Dominio y Rango</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4ff;
+      padding: 20px;
+    }
+    h1 {
+      color: #1e40af;
+    }
+    input, button {
+      padding: 8px;
+      font-size: 16px;
+      margin: 10px 0;
+    }
+    #output {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    #plot {
+      width: 100%;
+      height: 400px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Calculadora de Dominio y Rango</h1>
+  <label for="funcion">Ingresa una función de x (por ejemplo: sqrt(x), 1/(x+2), x^2 - 4):</label><br>
+  <input type="text" id="funcion" placeholder="Ejemplo: x^2 - 3*x + 2">
+  <br>
+  <button onclick="calcular()">Calcular y Graficar</button>
+
+  <div id="output"></div>
+  <div id="plot"></div>
+
+  <script>
+    function calcular() {
+      const funcionInput = document.getElementById('funcion').value;
+      const expr = math.parse(funcionInput);
+      const f = expr.compile();
+
+      let x_vals = [];
+      let y_vals = [];
+
+      let minY = Infinity, maxY = -Infinity;
+      let dominio = [];
+
+      for (let x = -50; x <= 50; x += 0.1) {
+        try {
+          let scope = {x: x};
+          let y = f.evaluate(scope);
+
+          if (typeof y === 'number' && isFinite(y)) {
+            x_vals.push(x);
+            y_vals.push(y);
+            dominio.push(x);
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        } catch (e) {
+          continue; // Ignorar errores (como división por 0)
+        }
+      }
+
+      Plotly.newPlot('plot', [{
+        x: x_vals,
+        y: y_vals,
+        mode: 'lines',
+        line: { color: 'blue' }
+      }], {
+        title: 'Gráfica de la función',
+        xaxis: { title: 'x' },
+        yaxis: { title: 'f(x)' }
+      });
+
+      document.getElementById('output').innerHTML = `
+        <p>🔷 Dominio aproximado: [${Math.min(...dominio).toFixed(2)}, ${Math.max(...dominio).toFixed(2)}]</p>
+        <p>🔶 Rango aproximado: [${minY.toFixed(2)}, ${maxY.toFixed(2)}]</p>
+      `;
+    }
+  </script>
+</body>
+</html>
