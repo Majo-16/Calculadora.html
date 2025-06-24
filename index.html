@@ -2,29 +2,44 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Calculadora de Funciones</title>
+  <title>MajoMath - Calculadora de Funciones</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: 'Inter', sans-serif;
       background-color: #f4f6fa;
     }
-
     header {
       background-color: #dc3545;
-      padding: 40px 20px;
-      text-align: center;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       color: white;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-
-    header h1 {
-      font-size: 32px;
-      margin: 0;
+    header img {
+      height: 40px;
+      margin-right: 15px;
+    }
+    header .left {
+      display: flex;
+      align-items: center;
+    }
+    header select, header button {
+      margin-left: 10px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
       font-weight: 600;
+      cursor: pointer;
+    }
+    header button {
+      background: white;
+      color: #dc3545;
     }
 
     .container {
@@ -50,15 +65,14 @@
       box-sizing: border-box;
     }
 
-    button {
+    .calculate-btn {
       background-color: #dc3545;
       color: white;
       font-weight: bold;
       margin-top: 20px;
       transition: background 0.3s;
     }
-
-    button:hover {
+    .calculate-btn:hover {
       background-color: #bb2d3b;
     }
 
@@ -88,19 +102,88 @@
       padding: 30px 10px;
       font-size: 14px;
     }
+
+    /* Chatbot */
+    #chatbot {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 300px;
+      background: white;
+      border: 2px solid #dc3545;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      display: none;
+      flex-direction: column;
+    }
+    #chatbot-header {
+      background: #dc3545;
+      color: white;
+      padding: 10px;
+      font-weight: bold;
+      border-radius: 12px 12px 0 0;
+    }
+    #chatbot-body {
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    #chatbot-input {
+      border-top: 1px solid #eee;
+      display: flex;
+    }
+    #chatbot-input input {
+      flex: 1;
+      border: none;
+      padding: 10px;
+      border-radius: 0 0 0 12px;
+    }
+    #chatbot-input button {
+      background: #dc3545;
+      border: none;
+      color: white;
+      padding: 10px;
+      border-radius: 0 0 12px 0;
+      cursor: pointer;
+    }
+    #chat-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>Calculadora de Dominio, Rango e Inecuaciones</h1>
+    <div class="left">
+      <img src="https://cdn-icons-png.flaticon.com/512/4228/4228693.png" alt="Logo">
+      <h1>MathMajo</h1>
+    </div>
+    <div class="right">
+      <select>
+        <option value="es">ES</option>
+        <option value="en">EN</option>
+      </select>
+      <button>Iniciar sesión</button>
+      <button>Registrarse</button>
+    </div>
   </header>
 
   <div class="container">
     <div class="card">
       <label for="funcion"><strong>Ingresa tu función o inecuación:</strong></label>
       <input type="text" id="funcion" placeholder="Ejemplo: x^2 - 4 ≥ 0 o sqrt(x)">
-      <button onclick="calcular()">Calcular</button>
+      <button class="calculate-btn" onclick="calcular()">Calcular</button>
     </div>
 
     <div id="output" class="card" style="display:none;"></div>
@@ -108,10 +191,48 @@
   </div>
 
   <footer>
-    © 2025 Majo | Calculadora matemática inspirada en Symbolab
+    © 2025 MathMajo | Calculadora matemática inspirada en Symbolab
   </footer>
 
+  <!-- Botón flotante del chatbot -->
+  <button id="chat-toggle" onclick="toggleChat()">💬</button>
+
+  <!-- Ventana de chatbot -->
+  <div id="chatbot">
+    <div id="chatbot-header">👨‍🏫 Profesor MajoBot</div>
+    <div id="chatbot-body">
+      <p><strong>MajoBot:</strong> ¡Hola! ¿En qué te puedo ayudar con tu función?</p>
+    </div>
+    <div id="chatbot-input">
+      <input type="text" id="chat-question" placeholder="Escribe tu pregunta...">
+      <button onclick="responderChat()">→</button>
+    </div>
+  </div>
+
   <script>
+    function toggleChat() {
+      const chatbot = document.getElementById('chatbot');
+      chatbot.style.display = chatbot.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function responderChat() {
+      const input = document.getElementById('chat-question');
+      const msg = input.value;
+      if (!msg.trim()) return;
+      const body = document.getElementById('chatbot-body');
+      body.innerHTML += `<p><strong>Tú:</strong> ${msg}</p>`;
+
+      let respuesta = 'Hmm... No estoy seguro, pero puedo ayudarte a graficar funciones.';
+
+      if (msg.toLowerCase().includes('dominio')) respuesta = 'El dominio es el conjunto de valores de x permitidos.';
+      if (msg.toLowerCase().includes('rango')) respuesta = 'El rango es el conjunto de valores posibles de f(x).';
+      if (msg.toLowerCase().includes('cómo resolver')) respuesta = 'Puedes escribir la función y hacer clic en "Calcular".';
+
+      body.innerHTML += `<p><strong>MajoBot:</strong> ${respuesta}</p>`;
+      body.scrollTop = body.scrollHeight;
+      input.value = '';
+    }
+
     function calcular() {
       const input = document.getElementById('funcion').value.replace(/\s/g, '');
       const match = input.match(/(.+)(<=|>=|<|>)(.+)/);
@@ -189,63 +310,17 @@
       });
 
       let salida = `
-        <p>📌 <strong>Dominio aprox.:</strong> <span class="math">[${Math.min(...domain).toFixed(2)}, ${Math.max(...domain).toFixed(2)}]</span></p>
-        <p>📈 <strong>Rango aprox.:</strong> <span class="math">[${minY.toFixed(2)}, ${maxY.toFixed(2)}]</span></p>
+        <p>📌 <strong>Dominio:</strong> <span class="math">[${Math.min(...domain).toFixed(2)}, ${Math.max(...domain).toFixed(2)}]</span></p>
+        <p>📈 <strong>Rango:</strong> <span class="math">[${minY.toFixed(2)}, ${maxY.toFixed(2)}]</span></p>
       `;
 
       if (operator) {
         salida += `<p>✅ <strong>Solución gráfica:</strong> <span class="math">${exprText} ${operator} ${compareText}</span></p>`;
-        const symbolic = resolverInecuacionCuadratica(exprText, operator);
-        if (symbolic) {
-          salida += `<p>🧠 <strong>Solución simbólica:</strong> <span class="math">${symbolic}</span></p>`;
-        }
       }
 
       const output = document.getElementById('output');
       output.style.display = 'block';
       output.innerHTML = salida;
-    }
-
-    function resolverInecuacionCuadratica(exprText, operador) {
-      try {
-        const node = math.simplify(exprText);
-        const poly = node.toString().replace(/\s/g, '');
-        const regex = /([+-]?\d*\.?\d*)\*?x\^2([+-]\d*\.?\d*)\*?x([+-]\d*\.?\d*)?/;
-        const match = poly.match(regex);
-
-        if (!match) return null;
-
-        let a = parseFloat(match[1]) || 1;
-        let b = parseFloat(match[2]) || 0;
-        let c = parseFloat(match[3]) || 0;
-
-        const disc = b * b - 4 * a * c;
-        if (disc < 0) return 'No hay solución real';
-
-        const x1 = ((-b - Math.sqrt(disc)) / (2 * a)).toFixed(2);
-        const x2 = ((-b + Math.sqrt(disc)) / (2 * a)).toFixed(2);
-
-        const min = Math.min(x1, x2);
-        const max = Math.max(x1, x2);
-
-        if (a > 0) {
-          switch (operador) {
-            case '>': return `(-∞, ${min}) ∪ (${max}, ∞)`;
-            case '>=': return `(-∞, ${min}] ∪ [${max}, ∞)`;
-            case '<': return `(${min}, ${max})`;
-            case '<=': return `[${min}, ${max}]`;
-          }
-        } else {
-          switch (operador) {
-            case '>': return `(${min}, ${max})`;
-            case '>=': return `[${min}, ${max}]`;
-            case '<': return `(-∞, ${min}) ∪ (${max}, ∞)`;
-            case '<=': return `(-∞, ${min}] ∪ [${max}, ∞)`;
-          }
-        }
-      } catch {
-        return null;
-      }
     }
   </script>
 </body>
