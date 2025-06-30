@@ -1,109 +1,252 @@
-<script>
-  function calcular() {
-    const input = document.getElementById('funcion').value.trim();
-    if (!input) return alert("⚠️ Ingresa una función válida.");
-
-    const match = input.match(/(.+)(<=|>=|<|>)(.+)/);
-    let exprText, operator = null, compareText = null;
-
-    if (match) {
-      exprText = match[1];
-      operator = match[2];
-      compareText = match[3];
-    } else {
-      exprText = input;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Calculadora de Funciones</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #f4f6fa;
     }
 
-    let expr, f, g = null;
-    try {
-      expr = math.parse(exprText);
-      f = expr.compile();
-    } catch {
-      return alert("❌ Error al interpretar la función: " + exprText);
+    header {
+      background-color: #dc3545;
+      padding: 40px 20px;
+      text-align: center;
+      color: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
-    if (compareText) {
-      try {
-        g = math.parse(compareText).compile();
-      } catch {
-        return alert("❌ Error al interpretar la comparación: " + compareText);
+    header h1 {
+      font-size: 32px;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+      margin-bottom: 30px;
+    }
+
+    input, button {
+      padding: 14px;
+      width: 100%;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #dc3545;
+      color: white;
+      font-weight: bold;
+      margin-top: 20px;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #bb2d3b;
+    }
+
+    #output {
+      background: #f8f9fc;
+      padding: 20px;
+      border-left: 4px solid #dc3545;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+
+    #plot {
+      height: 450px;
+      margin-top: 30px;
+    }
+
+    .math {
+      font-family: 'Courier New', monospace;
+      background: #e9ecef;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    footer {
+      text-align: center;
+      color: #6b7280;
+      padding: 30px 10px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Calculadora de Dominio, Rango e Inecuaciones</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <label for="funcion"><strong>Ingresa tu función o inecuación:</strong></label>
+      <input type="text" id="funcion" placeholder="Ejemplo: x^2 - 4 ≥ 0 o sqrt(x)">
+      <button onclick="calcular()">Calcular</button>
+    </div>
+
+    <div id="output" class="card" style="display:none;"></div>
+    <div id="plot" class="card"></div>
+  </div>
+
+  <footer>
+    © 2025 Majo | Calculadora matemática inspirada en Symbolab
+  </footer>
+
+  <script>
+    function calcular() {
+      const input = document.getElementById('funcion').value.replace(/\s/g, '');
+      const match = input.match(/(.+)(<=|>=|<|>)(.+)/);
+      let exprText, operator = null, compareText = null;
+
+      if (match) {
+        exprText = match[1];
+        operator = match[2];
+        compareText = match[3];
+      } else {
+        exprText = input;
       }
+
+      const expr = math.parse(exprText);
+      const f = expr.compile();
+      const g = compareText ? math.parse(compareText).compile() : null;
+
+      let x_vals = [], y_vals = [], valid_x = [], valid_y = [];
+      let minY = Infinity, maxY = -Infinity, domain = [];
+
+      for (let x = -50; x <= 50; x += 0.1) {
+        try {
+          let scope = { x };
+          let y = f.evaluate(scope);
+          let gy = g ? g.evaluate(scope) : 0;
+
+          if (typeof y === 'number' && isFinite(y)) {
+            x_vals.push(x);
+            y_vals.push(y);
+            domain.push(x);
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+
+            if (operator) {
+              let valid = false;
+              if (operator === '>') valid = y > gy;
+              if (operator === '>=') valid = y >= gy;
+              if (operator === '<') valid = y < gy;
+              if (operator === '<=') valid = y <= gy;
+
+              valid_x.push(x);
+              valid_y.push(valid ? y : null);
+            }
+          }
+        } catch {}
+      }
+
+      const traces = [
+        {
+          x: x_vals,
+          y: y_vals,
+          mode: 'lines',
+          name: 'f(x)',
+          line: { color: '#0d6efd', width: 2 }
+        }
+      ];
+
+      if (operator) {
+        traces.push({
+          x: valid_x,
+          y: valid_y,
+          fill: 'tozeroy',
+          mode: 'lines',
+          name: 'Zona válida',
+          line: { color: 'rgba(13,110,253,0.2)' },
+          fillcolor: 'rgba(13,110,253,0.3)'
+        });
+      }
+
+      Plotly.newPlot('plot', traces, {
+        title: 'Gráfica',
+        xaxis: { title: 'x' },
+        yaxis: { title: 'f(x)' },
+        margin: { t: 30 }
+      });
+
+      let salida = `
+        <p>📌 <strong>Dominio aprox.:</strong> <span class="math">[${Math.min(...domain).toFixed(2)}, ${Math.max(...domain).toFixed(2)}]</span></p>
+        <p>📈 <strong>Rango aprox.:</strong> <span class="math">[${minY.toFixed(2)}, ${maxY.toFixed(2)}]</span></p>
+      `;
+
+      if (operator) {
+        salida += `<p>✅ <strong>Solución gráfica:</strong> <span class="math">${exprText} ${operator} ${compareText}</span></p>`;
+        const symbolic = resolverInecuacionCuadratica(exprText, operator);
+        if (symbolic) {
+          salida += `<p>🧠 <strong>Solución simbólica:</strong> <span class="math">${symbolic}</span></p>`;
+        }
+      }
+
+      const output = document.getElementById('output');
+      output.style.display = 'block';
+      output.innerHTML = salida;
     }
 
-    let x_vals = [], y_vals = [], valid_x = [], valid_y = [];
-    let minY = Infinity, maxY = -Infinity, domain = [];
-
-    for (let x = -50; x <= 50; x += 0.1) {
+    function resolverInecuacionCuadratica(exprText, operador) {
       try {
-        const scope = { x };
-        const y = f.evaluate(scope);
-        const gy = g ? g.evaluate(scope) : 0;
+        const node = math.simplify(exprText);
+        const poly = node.toString().replace(/\s/g, '');
+        const regex = /([+-]?\d*\.?\d*)\*?x\^2([+-]\d*\.?\d*)\*?x([+-]\d*\.?\d*)?/;
+        const match = poly.match(regex);
 
-        if (typeof y === 'number' && isFinite(y)) {
-          x_vals.push(x);
-          y_vals.push(y);
-          domain.push(x);
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
+        if (!match) return null;
 
-          if (operator) {
-            let valid = false;
-            if (operator === '>') valid = y > gy;
-            if (operator === '>=') valid = y >= gy;
-            if (operator === '<') valid = y < gy;
-            if (operator === '<=') valid = y <= gy;
+        let a = parseFloat(match[1]) || 1;
+        let b = parseFloat(match[2]) || 0;
+        let c = parseFloat(match[3]) || 0;
 
-            if (valid) {
-              valid_x.push(x);
-              valid_y.push(y);
-            }
+        const disc = b * b - 4 * a * c;
+        if (disc < 0) return 'No hay solución real';
+
+        const x1 = ((-b - Math.sqrt(disc)) / (2 * a)).toFixed(2);
+        const x2 = ((-b + Math.sqrt(disc)) / (2 * a)).toFixed(2);
+
+        const min = Math.min(x1, x2);
+        const max = Math.max(x1, x2);
+
+        if (a > 0) {
+          switch (operador) {
+            case '>': return `(-∞, ${min}) ∪ (${max}, ∞)`;
+            case '>=': return `(-∞, ${min}] ∪ [${max}, ∞)`;
+            case '<': return `(${min}, ${max})`;
+            case '<=': return `[${min}, ${max}]`;
+          }
+        } else {
+          switch (operador) {
+            case '>': return `(${min}, ${max})`;
+            case '>=': return `[${min}, ${max}]`;
+            case '<': return `(-∞, ${min}) ∪ (${max}, ∞)`;
+            case '<=': return `(-∞, ${min}] ∪ [${max}, ∞)`;
           }
         }
       } catch {
-        // Saltar valores inválidos
+        return null;
       }
     }
-
-    const traces = [
-      {
-        x: x_vals,
-        y: y_vals,
-        mode: 'lines',
-        name: 'f(x)',
-        line: { color: '#0d6efd', width: 2 }
-      }
-    ];
-
-    if (operator) {
-      traces.push({
-        x: valid_x,
-        y: valid_y,
-        fill: 'tozeroy',
-        mode: 'lines',
-        name: 'Zona válida',
-        line: { color: 'rgba(13,110,253,0.2)' },
-        fillcolor: 'rgba(13,110,253,0.3)'
-      });
-    }
-
-    Plotly.newPlot('plot', traces, {
-      title: 'Gráfica',
-      xaxis: { title: 'x' },
-      yaxis: { title: 'f(x)' },
-      margin: { t: 30 }
-    });
-
-    let salida = 
-      <p>📌 <strong>Dominio:</strong> <span class="math">[${Math.min(...domain).toFixed(2)}, ${Math.max(...domain).toFixed(2)}]</span></p>
-      <p>📈 <strong>Rango:</strong> <span class="math">[${minY.toFixed(2)}, ${maxY.toFixed(2)}]</span></p>
-    ;
-
-    if (operator) {
-      salida += <p>✅ <strong>Solución gráfica:</strong> <span class="math">${exprText} ${operator} ${compareText}</span></p>;
-    }
-
-    const output = document.getElementById('output');
-    output.style.display = 'block';
-    output.innerHTML = salida;
-  }
-</script>
+  </script>
+</body>
+</html>
